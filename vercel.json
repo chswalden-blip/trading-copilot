@@ -1,5 +1,716 @@
-{
-  "buildCommand": "npm run build",
-  "outputDirectory": "build",
-  "framework": "create-react-app"
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="theme-color" content="#04080f" />
+  <title>Trading Copilot</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;700&family=Syne:wght@700;800&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #04080f; font-family: 'Fira Code', monospace; color: #e2e8f0; min-height: 100vh; display: flex; flex-direction: column; max-width: 480px; margin: 0 auto; }
+    ::-webkit-scrollbar { width: 2px; } ::-webkit-scrollbar-thumb { background: rgba(59,130,246,0.2); }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+    input::placeholder { color: #1e293b; }
+    .header { background: rgba(4,8,15,0.98); border-bottom: 1px solid rgba(255,255,255,0.04); padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
+    .header-title { font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 800; letter-spacing: 0.12em; color: #e2e8f0; }
+    .header-sub { font-size: 9px; color: #1e293b; margin-top: 1px; letter-spacing: 0.06em; }
+    .status-dot { width: 6px; height: 6px; border-radius: 50%; animation: pulse 1.5s infinite; }
+    .status-wrap { display: flex; align-items: center; gap: 6px; }
+    .status-label { font-size: 9px; letter-spacing: 0.1em; font-weight: 700; }
+    .btn-grid { padding: 12px 16px 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .action-btn { background: #080e1a; border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 14px 12px; cursor: pointer; text-align: left; transition: all 0.2s; font-family: inherit; }
+    .action-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+    .action-btn-icon { font-size: 20px; margin-bottom: 4px; }
+    .action-btn-label { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; }
+    .action-btn-desc { font-size: 9px; color: #1e293b; margin-top: 2px; }
+    .watchlist { padding: 0 16px 10px; display: flex; gap: 6px; overflow-x: auto; }
+    .ticker-btn { background: transparent; border: 1px solid rgba(255,255,255,0.05); border-radius: 5px; padding: 5px 10px; color: #334155; font-size: 10px; cursor: pointer; font-family: inherit; font-weight: 700; letter-spacing: 0.1em; white-space: nowrap; flex-shrink: 0; transition: all 0.2s; }
+    .ticker-btn:hover { color: #94a3b8; border-color: rgba(255,255,255,0.1); }
+    .tabs { display: flex; border-bottom: 1px solid rgba(255,255,255,0.04); background: rgba(4,8,15,0.9); }
+    .tab { flex: 1; padding: 10px 4px; background: transparent; border: none; font-size: 9px; cursor: pointer; font-family: inherit; font-weight: 700; letter-spacing: 0.1em; transition: all 0.2s; position: relative; }
+    .tab.active { color: #3b82f6; border-bottom: 2px solid #3b82f6; }
+    .tab.inactive { color: #1e293b; border-bottom: 2px solid transparent; }
+    .tab-badge { position: absolute; top: 6px; right: 20%; background: #3b82f6; color: #fff; border-radius: 50%; width: 14px; height: 14px; font-size: 8px; display: flex; align-items: center; justify-content: center; }
+    .content { flex: 1; overflow-y: auto; padding: 12px 16px; }
+    .spinner-wrap { background: #080e1a; border: 1px solid rgba(59,130,246,0.1); border-radius: 10px; padding: 20px; text-align: center; margin-bottom: 10px; }
+    .spinner { width: 18px; height: 18px; margin: 0 auto 10px; border: 1.5px solid rgba(59,130,246,0.2); border-top: 1.5px solid #3b82f6; border-radius: 50%; animation: spin 0.8s linear infinite; }
+    .spinner-label { font-size: 11px; color: #3b82f6; letter-spacing: 0.06em; }
+    .empty-state { text-align: center; padding: 50px 20px; }
+    .empty-icon { font-size: 40px; margin-bottom: 14px; opacity: 0.08; }
+    .empty-title { font-size: 11px; color: #1e293b; letter-spacing: 0.1em; margin-bottom: 10px; }
+    .empty-desc { font-size: 10px; color: #0f172a; line-height: 2; }
+    .setup-card { background: #080e1a; border-radius: 12px; margin-bottom: 10px; overflow: hidden; }
+    .setup-header { padding: 14px 16px; cursor: pointer; }
+    .setup-title { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+    .setup-ticker { font-size: 20px; font-weight: 800; color: #e2e8f0; font-family: 'Syne', sans-serif; letter-spacing: 0.05em; }
+    .tag { padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 700; letter-spacing: 0.08em; }
+    .setup-edge { font-size: 11px; color: #475569; line-height: 1.5; }
+    .scores { display: flex; gap: 14px; flex-shrink: 0; }
+    .score-item { text-align: center; min-width: 36px; }
+    .score-val { font-size: 17px; font-weight: 800; font-family: 'Syne', sans-serif; line-height: 1; }
+    .score-lbl { font-size: 8px; color: #334155; letter-spacing: 0.1em; margin-top: 2px; }
+    .setup-detail { border-top: 1px solid rgba(255,255,255,0.04); padding: 14px 16px; }
+    .price-grid { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 6px; margin-bottom: 10px; }
+    .price-box { background: rgba(255,255,255,0.02); border-radius: 6px; padding: 8px 4px; text-align: center; }
+    .price-lbl { font-size: 9px; color: #334155; letter-spacing: 0.08em; margin-bottom: 3px; }
+    .price-val { font-size: 13px; font-weight: 700; }
+    .tp-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 10px; }
+    .tp-box { background: rgba(34,197,94,0.04); border: 1px solid rgba(34,197,94,0.1); border-radius: 6px; padding: 8px 4px; text-align: center; }
+    .contract-box { background: rgba(59,130,246,0.05); border: 1px solid rgba(59,130,246,0.12); border-radius: 8px; padding: 10px; margin-bottom: 10px; }
+    .contract-lbl { font-size: 9px; color: #3b82f6; letter-spacing: 0.12em; font-weight: 700; margin-bottom: 4px; }
+    .contract-val { font-size: 12px; color: #93c5fd; font-family: monospace; word-break: break-all; }
+    .danger-box { background: rgba(239,68,68,0.04); border: 1px solid rgba(239,68,68,0.1); border-radius: 8px; padding: 10px; margin-bottom: 10px; }
+    .danger-lbl { font-size: 9px; color: #ef4444; letter-spacing: 0.1em; font-weight: 700; margin-bottom: 3px; }
+    .danger-val { font-size: 11px; color: #94a3b8; }
+    .checklist-box { background: rgba(250,204,21,0.04); border: 1px solid rgba(250,204,21,0.1); border-radius: 8px; padding: 12px; margin-bottom: 10px; }
+    .checklist-lbl { font-size: 9px; color: #fbbf24; letter-spacing: 0.12em; font-weight: 700; margin-bottom: 8px; }
+    .check-item { display: flex; gap: 8px; padding: 3px 0; align-items: flex-start; font-size: 11px; color: #475569; }
+    .btn-row { display: flex; gap: 8px; margin-top: 12px; }
+    .action-small { flex: 1; border-radius: 7px; padding: 9px 12px; font-size: 10px; font-weight: 700; cursor: pointer; font-family: inherit; letter-spacing: 0.08em; transition: all 0.15s; border: 1px solid; }
+    .cash-card { background: rgba(59,130,246,0.06); border: 1px solid rgba(59,130,246,0.2); border-radius: 10px; padding: 20px; text-align: center; margin-bottom: 10px; }
+    .cash-icon { font-size: 28px; margin-bottom: 8px; }
+    .cash-title { font-size: 14px; color: #3b82f6; font-weight: 800; font-family: 'Syne', sans-serif; letter-spacing: 0.1em; margin-bottom: 6px; }
+    .cash-desc { font-size: 12px; color: #334155; }
+    .market-card { background: #080e1a; border: 1px solid rgba(59,130,246,0.12); border-radius: 12px; padding: 16px; margin-bottom: 10px; }
+    .market-line { padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,0.03); font-size: 11px; font-family: monospace; color: #64748b; }
+    .result-header { font-size: 9px; color: #1e293b; letter-spacing: 0.1em; margin-bottom: 8px; display: flex; justify-content: space-between; }
+    .generic-card { background: #080e1a; border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 16px; margin-bottom: 10px; }
+    .generic-pre { font-family: monospace; font-size: 12px; line-height: 1.8; color: #64748b; white-space: pre-wrap; word-break: break-word; }
+    .error-card { background: rgba(239,68,68,0.05); border: 1px solid rgba(239,68,68,0.1); border-radius: 10px; padding: 12px; margin-bottom: 10px; font-size: 11px; color: #ef4444; }
+    .journal-item { background: #080e1a; border: 1px solid rgba(255,255,255,0.05); border-radius: 10px; padding: 14px; margin-bottom: 8px; }
+    .journal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .journal-ticker { font-size: 17px; font-weight: 800; color: #e2e8f0; font-family: 'Syne', sans-serif; }
+    .journal-date { font-size: 10px; color: #334155; }
+    .journal-grid { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 6px; }
+    .journal-box { background: rgba(255,255,255,0.02); border-radius: 5px; padding: 6px 4px; text-align: center; }
+    .journal-contract { font-size: 10px; color: #334155; margin-top: 8px; font-family: monospace; }
+    .journal-btns { display: flex; gap: 6px; margin-top: 10px; }
+    .watch-item { display: flex; justify-content: space-between; align-items: center; background: #080e1a; border: 1px solid rgba(255,255,255,0.04); border-radius: 8px; padding: 12px 14px; margin-bottom: 6px; }
+    .watch-ticker { font-size: 14px; font-weight: 700; color: #e2e8f0; font-family: 'Syne', sans-serif; }
+    .watch-btns { display: flex; gap: 6px; }
+    .add-row { display: flex; gap: 8px; margin-top: 12px; }
+    .text-input { flex: 1; background: #080e1a; border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; padding: 10px 14px; color: #e2e8f0; font-size: 12px; font-family: inherit; outline: none; }
+    .ask-section { margin-bottom: 16px; }
+    .ask-title { font-size: 10px; color: #334155; letter-spacing: 0.1em; margin-bottom: 12px; }
+    .quick-q { display: block; width: 100%; background: rgba(59,130,246,0.04); border: 1px solid rgba(59,130,246,0.1); border-radius: 8px; padding: 12px 14px; color: #334155; font-size: 11px; cursor: pointer; font-family: inherit; text-align: left; margin-bottom: 6px; transition: all 0.2s; }
+    .quick-q:hover { color: #94a3b8; border-color: rgba(59,130,246,0.3); }
+    .input-bar { padding: 12px 16px 20px; border-top: 1px solid rgba(255,255,255,0.04); background: rgba(4,8,15,0.98); display: flex; gap: 8px; }
+    .exec-btn { background: rgba(59,130,246,0.12); border: 1px solid rgba(59,130,246,0.3); border-radius: 8px; padding: 10px 16px; color: #3b82f6; font-size: 11px; cursor: pointer; font-family: inherit; font-weight: 700; letter-spacing: 0.08em; transition: all 0.2s; }
+    .exec-btn:disabled { background: transparent; border-color: rgba(255,255,255,0.04); color: #1e293b; cursor: not-allowed; }
+    .key-screen { position: fixed; inset: 0; background: #04080f; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
+    .key-title { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 800; letter-spacing: 0.15em; color: #e2e8f0; margin-bottom: 8px; }
+    .key-sub { font-size: 11px; color: #334155; letter-spacing: 0.08em; margin-bottom: 40px; }
+    .key-box { width: 100%; max-width: 400px; background: rgba(8,14,26,0.9); border: 1px solid rgba(59,130,246,0.2); border-radius: 12px; padding: 24px; }
+    .key-label { font-size: 11px; color: #334155; letter-spacing: 0.12em; margin-bottom: 8px; }
+    .key-input { width: 100%; background: rgba(255,255,255,0.04); border: 1px solid rgba(59,130,246,0.2); border-radius: 8px; padding: 14px; color: #e2e8f0; font-size: 14px; font-family: monospace; outline: none; margin-bottom: 16px; }
+    .key-btn { width: 100%; background: linear-gradient(135deg, #1d4ed8, #2563eb); border: none; border-radius: 8px; padding: 14px; color: #fff; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; letter-spacing: 0.06em; transition: all 0.2s; }
+    .key-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .key-error { color: #ef4444; font-size: 11px; margin-top: 8px; text-align: center; }
+    .key-note { font-size: 10px; color: #1e293b; text-align: center; margin-top: 16px; line-height: 1.8; }
+  </style>
+</head>
+<body>
+
+<!-- API Key Screen -->
+<div class="key-screen" id="keyScreen">
+  <div class="key-title">◈ TRADING COPILOT</div>
+  <div class="key-sub">ENTER YOUR ANTHROPIC API KEY TO BEGIN</div>
+  <div class="key-box">
+    <div class="key-label">ANTHROPIC API KEY</div>
+    <input class="key-input" type="password" id="keyInput" placeholder="sk-ant-api03-..." />
+    <div class="key-error" id="keyError"></div>
+    <button class="key-btn" id="keyBtn" onclick="saveKey()">SAVE & CONTINUE</button>
+    <div class="key-note">
+      Your key is stored only in your browser's localStorage.<br/>
+      It is never sent anywhere except Anthropic's API directly.<br/>
+      Get a key at console.anthropic.com
+    </div>
+  </div>
+</div>
+
+<!-- Main App -->
+<div id="mainApp" style="display:none; flex-direction:column; min-height:100vh;">
+
+  <!-- Header -->
+  <div class="header">
+    <div>
+      <div class="header-title">◈ TRADING COPILOT</div>
+      <div class="header-sub">SCAN · DECIDE · VERIFY · TRADE</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <button onclick="clearKey()" style="background:transparent;border:1px solid rgba(255,255,255,0.06);border-radius:4px;padding:3px 8px;color:#334155;font-size:9px;cursor:pointer;font-family:inherit;font-weight:700;letter-spacing:0.08em;">KEY</button>
+      <div class="status-wrap">
+        <div class="status-dot" id="statusDot" style="background:#22c55e;box-shadow:0 0 8px #22c55e;"></div>
+        <div class="status-label" id="statusLabel" style="color:#22c55e;">READY</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Market hours indicator -->
+  <div style="padding:6px 16px;background:rgba(4,8,15,0.8);border-bottom:1px solid rgba(255,255,255,0.03);">
+    <span id="marketHours" style="font-size:10px;font-weight:700;letter-spacing:0.1em;"></span>
+  </div>
+
+  <!-- Action buttons -->
+  <div class="btn-grid">
+    <button class="action-btn" onclick="runAction('scan')" id="btn-scan">
+      <div class="action-btn-icon">⬡</div>
+      <div class="action-btn-label" style="color:#22c55e;">FULL SCAN</div>
+      <div class="action-btn-desc">Best trades now</div>
+    </button>
+    <button class="action-btn" onclick="runAction('market')" id="btn-market">
+      <div class="action-btn-icon">◉</div>
+      <div class="action-btn-label" style="color:#3b82f6;">MARKET STATUS</div>
+      <div class="action-btn-desc">SPY · QQQ · VIX</div>
+    </button>
+    <button class="action-btn" onclick="runAction('flow')" id="btn-flow">
+      <div class="action-btn-icon">◆</div>
+      <div class="action-btn-label" style="color:#a855f7;">OPTIONS FLOW</div>
+      <div class="action-btn-desc">Unusual activity</div>
+    </button>
+    <button class="action-btn" onclick="runAction('risk')" id="btn-risk">
+      <div class="action-btn-icon">▲</div>
+      <div class="action-btn-label" style="color:#ef4444;">RISK CHECK</div>
+      <div class="action-btn-desc">Position size & threats</div>
+    </button>
+  </div>
+
+  <!-- Watchlist -->
+  <div class="watchlist" id="watchlistPills"></div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab active" id="tab-scan" onclick="switchTab('scan')">SCAN</button>
+    <button class="tab inactive" id="tab-journal" onclick="switchTab('journal')">JOURNAL <span class="tab-badge" id="journalBadge" style="display:none;"></span></button>
+    <button class="tab inactive" id="tab-watch" onclick="switchTab('watch')">WATCH</button>
+    <button class="tab inactive" id="tab-ask" onclick="switchTab('ask')">ASK</button>
+  </div>
+
+  <!-- Content -->
+  <div class="content" id="content"></div>
+
+  <!-- Input bar -->
+  <div class="input-bar">
+    <input class="text-input" id="askInput" placeholder="Ask anything — ticker, setup, exit strategy..." onkeydown="if(event.key==='Enter')sendAsk()" />
+    <button class="exec-btn" id="askBtn" onclick="sendAsk()">ASK</button>
+  </div>
+
+</div>
+
+<script>
+// ─── STATE ───────────────────────────────────────────────────────────────────
+const DEFAULT_WATCHLIST = ['SOFI','HOOD','NVDA','AAPL','TSLA','MRVL','PLTR'];
+let watchlist = JSON.parse(localStorage.getItem('watchlist') || JSON.stringify(DEFAULT_WATCHLIST));
+let savedTrades = JSON.parse(localStorage.getItem('savedTrades') || '[]');
+let results = [];
+let loading = false;
+let currentTab = 'scan';
+let loadingInterval = null;
+
+// ─── PROMPTS ─────────────────────────────────────────────────────────────────
+const PROMPTS = {
+  market: () => `Search current market data now. Return ONLY:
+MARKET — ${new Date().toLocaleDateString()}
+SPY: $[price] [▲/▼][%] | [BULL/NEUTRAL/BEAR] | Support $[x] Resist $[x]
+QQQ: $[price] [▲/▼][%] | [BULL/NEUTRAL/BEAR] | Support $[x] Resist $[x]
+VIX: [level] | [FEAR/NEUTRAL/COMPLACENT] | options are [CHEAP/FAIR/EXPENSIVE]
+Breadth: [%] above 50MA | [NARROW/BROAD]
+Leaders: [sector] [sector]
+Laggards: [sector] [sector]
+This week: [one key event]
+Gap-up alerts: [stocks gapping 5%+ or "none"]
+VERDICT: [RISK-ON/MIXED/RISK-OFF/STAY IN CASH]
+SIZING: [FULL/REDUCED/MINIMAL]
+REASON: [max 15 words]`,
+
+  scan: () => `Search market now. Scan S&P500, Nasdaq100, unusual options flow, momentum names.
+REJECT if: earnings <7 days, gap-up today >4%, OI <300, R/R <2:1, DTE <21, Theta <-0.15.
+Max 3 setups. If none: output only "NO EDGE — STAY IN CASH" and one sentence why.
+For each use EXACTLY:
+==SETUP==
+T:[ticker] D:[BULL/BEAR] G:[A+/A/B] EV:[x/10] PR:[x/10] RK:[x/10]
+PRICE:$[x] SUP:$[x] RES:$[x]
+ENTRY:$[x]-$[x] STOP:$[x] TP1:$[x] TP2:$[x] TP3:$[x] RR:[x:1]
+CONTRACT:[Mmm DD] $[strike][C/P] DTE:[x] Δ:[x] Θ:[x] IV:[x%] OI:[x]
+EDGE:[one sentence]
+DANGER:[one sentence]
+GAP_CHECK:[CLEAN/WARNING]
+CALL:[STRONG BUY/BUY/WATCHLIST]
+==END==`,
+
+  deepdive: (t) => `Search ${t} now. Return ONLY:
+==DIVE:${t}==
+PRICE:$[x] TREND:[BULL/BEAR/NEUTRAL] VOL:[x]% vs avg
+SUP:$[x] RES:$[x] EMA21:[above/below] EMA50:[above/below]
+EARNINGS:[date] [SAFE/CAUTION]
+NEWS:[none/one line]
+GAP_TODAY:[YES [%] DO NOT TRADE/NO CLEAR]
+COMMITTEE:[APPROVED/REJECTED] — [one line]
+CONTRACT:$[strike][C/P] [Mmm DD] DTE:[x] Δ:[x] Θ:[x] IV:[x%] OI:[x]
+ENTRY:$[x]-$[x] STOP:$[x] TP1:$[x] TP2:$[x] TP3:$[x] RR:[x:1]
+VERDICT:[ENTER NOW/WAIT/AVOID]
+REASON:[one sentence]
+==END==`,
+
+  flow: () => `Search today's unusual options activity. Max 3. If none: "NO UNUSUAL FLOW TODAY"
+==FLOW==
+T:[ticker] DIR:[BULL/BEAR] SIZE:[large/unusual]
+ACTIVITY:[one line]
+STRENGTH:[STRONG/MODERATE/WEAK]
+TRADE:[YES/NO] — [if YES: $[strike][C/P] [expiry] why]
+==END==`,
+
+  risk: () => `Search current VIX and market. Under 80 words:
+RISK LEVEL: [LOW/MEDIUM/HIGH/EXTREME]
+VIX: [level] — [implication]
+IV environment: [CHEAP/FAIR/EXPENSIVE]
+Biggest threat: [one line]
+Earnings landmines: [this week]
+Position size: [FULL 2-5%/REDUCED 1-2%/MINIMAL 0.5-1%]
+VERDICT: [TRADE NORMAL/TRADE SMALL/STAY CASH]`,
+
+  ask: (q) => `Answer concisely, max 120 words, numbers and decisions only: ${q}`,
+};
+
+// ─── MARKET HOURS ─────────────────────────────────────────────────────────────
+function updateMarketHours() {
+  const el = document.getElementById('marketHours');
+  if (!el) return;
+  const now = new Date();
+  const et = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+  const d = et.getDay(), h = et.getHours() + et.getMinutes()/60;
+  let label, color;
+  if (d===0||d===6) { label='● WEEKEND'; color='#475569'; }
+  else if (h < 7.5) { label='● PRE-PRE MARKET'; color='#475569'; }
+  else if (h < 9.5) { label='● PRE-MARKET'; color='#fbbf24'; }
+  else if (h < 16) { label='● MARKET OPEN'; color='#22c55e'; }
+  else if (h < 20) { label='● AFTER HOURS'; color='#f97316'; }
+  else { label='● MARKET CLOSED'; color='#475569'; }
+  el.textContent = label;
+  el.style.color = color;
 }
+
+// ─── API KEY ──────────────────────────────────────────────────────────────────
+function getKey() { return localStorage.getItem('apiKey') || ''; }
+
+function saveKey() {
+  const key = document.getElementById('keyInput').value.trim();
+  const err = document.getElementById('keyError');
+  const btn = document.getElementById('keyBtn');
+  if (!key.startsWith('sk-ant-')) { err.textContent = 'Invalid key format. Must start with sk-ant-'; return; }
+  btn.disabled = true;
+  btn.textContent = 'VERIFYING...';
+  err.textContent = '';
+  // Test the key
+  callAPI(PROMPTS.risk(), 'risk', key).then(() => {
+    localStorage.setItem('apiKey', key);
+    document.getElementById('keyScreen').style.display = 'none';
+    document.getElementById('mainApp').style.display = 'flex';
+    initApp();
+  }).catch(e => {
+    err.textContent = 'Invalid key: ' + e.message;
+    btn.disabled = false;
+    btn.textContent = 'SAVE & CONTINUE';
+  });
+}
+
+function clearKey() {
+  localStorage.removeItem('apiKey');
+  document.getElementById('keyScreen').style.display = 'flex';
+  document.getElementById('mainApp').style.display = 'none';
+}
+
+// ─── API CALL ─────────────────────────────────────────────────────────────────
+async function callAPI(prompt, type, keyOverride) {
+  const apiKey = keyOverride || getKey();
+  // Call our own backend serverless function
+  const res = await fetch('/api/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt, apiKey }),
+  });
+  const data = await res.json();
+  if (data.error) throw new Error(data.error);
+  return data.text || '';
+}
+
+// ─── LOADING ──────────────────────────────────────────────────────────────────
+const LOADING = {
+  scan: ['Scanning S&P 500...','Checking Nasdaq...','Scanning unusual flow...','Running Risk Committee...','Rejecting weak setups...','Building trade cards...'],
+  market: ['Fetching SPY...','Reading QQQ...','Checking VIX...','Analyzing breadth...'],
+  flow: ['Scanning options flow...','Finding large sweeps...','Checking block trades...'],
+  risk: ['Assessing risk level...','Reading VIX...','Checking earnings...'],
+  dive: ['Searching live data...','Checking earnings date...','Running Risk Committee...'],
+  ask: ['Analyzing...','Searching...','Processing...'],
+};
+
+function setLoading(type) {
+  loading = true;
+  document.querySelectorAll('.action-btn,.ticker-btn').forEach(b => b.disabled = true);
+  document.getElementById('askBtn').disabled = true;
+  document.getElementById('statusDot').style.background = '#fbbf24';
+  document.getElementById('statusDot').style.boxShadow = '0 0 8px #fbbf24';
+  document.getElementById('statusLabel').style.color = '#fbbf24';
+  const labels = LOADING[type] || LOADING.ask;
+  let i = 0;
+  document.getElementById('statusLabel').textContent = labels[0];
+  loadingInterval = setInterval(() => { i=(i+1)%labels.length; document.getElementById('statusLabel').textContent = labels[i]; }, 1900);
+  showSpinner(labels[0]);
+}
+
+function clearLoading() {
+  loading = false;
+  clearInterval(loadingInterval);
+  document.querySelectorAll('.action-btn,.ticker-btn').forEach(b => b.disabled = false);
+  document.getElementById('askBtn').disabled = false;
+  document.getElementById('statusDot').style.background = '#22c55e';
+  document.getElementById('statusDot').style.boxShadow = '0 0 8px #22c55e';
+  document.getElementById('statusLabel').style.color = '#22c55e';
+  document.getElementById('statusLabel').textContent = 'READY';
+}
+
+// ─── ACTIONS ──────────────────────────────────────────────────────────────────
+async function runAction(type, ticker) {
+  if (loading) return;
+  let prompt;
+  if (type === 'scan') prompt = PROMPTS.scan();
+  else if (type === 'market') prompt = PROMPTS.market();
+  else if (type === 'flow') prompt = PROMPTS.flow();
+  else if (type === 'risk') prompt = PROMPTS.risk();
+  else if (type === 'dive') prompt = PROMPTS.deepdive(ticker);
+
+  setLoading(type === 'dive' ? 'dive' : type);
+  switchTab('scan');
+
+  try {
+    const text = await callAPI(prompt, type);
+    results.unshift({ type: type === 'dive' ? 'dive' : type, text, time: new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}), ticker });
+    renderContent();
+  } catch(e) {
+    results.unshift({ type: 'error', text: 'Error: ' + e.message, time: '' });
+    renderContent();
+  }
+  clearLoading();
+}
+
+async function sendAsk() {
+  const input = document.getElementById('askInput');
+  const q = input.value.trim();
+  if (!q || loading) return;
+  input.value = '';
+  setLoading('ask');
+  switchTab('scan');
+  try {
+    const text = await callAPI(PROMPTS.ask(q), 'ask');
+    results.unshift({ type: 'ask', text, time: new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) });
+    renderContent();
+  } catch(e) {
+    results.unshift({ type: 'error', text: 'Error: ' + e.message, time: '' });
+    renderContent();
+  }
+  clearLoading();
+}
+
+// ─── PARSE ────────────────────────────────────────────────────────────────────
+function parseSetups(text) {
+  const blocks = [...text.matchAll(/==SETUP==([\s\S]*?)==END==/g)].map(m => m[1]);
+  return blocks.map(b => {
+    const g = (re) => b.match(re)?.[1]?.trim();
+    return {
+      ticker: g(/T:([A-Z]+)/), direction: g(/D:(BULL|BEAR)/),
+      grade: g(/G:(A\+|A|B|C)/), ev: g(/EV:(\d+)/), prob: g(/PR:(\d+)/), risk: g(/RK:(\d+)/),
+      entry: g(/ENTRY:\$([^\s]+)/), stop: g(/STOP:\$([^\s]+)/),
+      tp1: g(/TP1:\$([^\s]+)/), tp2: g(/TP2:\$([^\s]+)/), tp3: g(/TP3:\$([^\s]+)/),
+      rr: g(/RR:([^\s]+)/), contract: g(/CONTRACT:([^\n]+)/),
+      dte: g(/DTE:(\d+)/), delta: g(/Δ:([^\s]+)/), theta: g(/Θ:([^\s]+)/),
+      iv: g(/IV:([^\s%]+)/), oi: g(/OI:([^\s]+)/),
+      edge: g(/EDGE:([^\n]+)/), danger: g(/DANGER:([^\n]+)/),
+      gap: g(/GAP_CHECK:([^\n]+)/), call: g(/CALL:(STRONG BUY|BUY|WATCHLIST)/),
+    };
+  });
+}
+
+function scoreColor(n) { return +n>=8?'#22c55e':+n>=6?'#fbbf24':'#ef4444'; }
+function gradeColor(g) { return {'A+':'#22c55e','A':'#86efac','B':'#fbbf24','C':'#f97316'}[g]||'#64748b'; }
+function callColor(c) { return {'STRONG BUY':'#22c55e','BUY':'#86efac','WATCHLIST':'#fbbf24','AVOID':'#ef4444'}[c]||'#64748b'; }
+function dirColor(d) { return d==='BULL'?'#22c55e':'#ef4444'; }
+
+// ─── RENDER ───────────────────────────────────────────────────────────────────
+function showSpinner(label) {
+  if (currentTab !== 'scan') return;
+  const el = document.getElementById('content');
+  el.innerHTML = `<div class="spinner-wrap"><div class="spinner"></div><div class="spinner-label">${label}</div></div>`;
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab').forEach(t => { t.className = 'tab ' + (t.id === 'tab-'+tab ? 'active' : 'inactive'); });
+  renderContent();
+}
+
+function renderContent() {
+  const el = document.getElementById('content');
+  if (loading && currentTab === 'scan') return;
+
+  if (currentTab === 'scan') {
+    if (results.length === 0) {
+      el.innerHTML = `<div class="empty-state"><div class="empty-icon">⬡</div><div class="empty-title">ONE TAP. REAL DATA. CLEAR DECISION.</div><div class="empty-desc">FULL SCAN searches the entire market.<br/>No edge found = STAY IN CASH.<br/>Gap detected = automatically flagged.</div></div>`;
+      return;
+    }
+    el.innerHTML = results.map((r, i) => renderResult(r, i)).join('');
+    // Re-attach toggle handlers
+    document.querySelectorAll('.setup-header').forEach(h => {
+      h.onclick = () => {
+        const detail = h.nextElementSibling;
+        if (detail) detail.style.display = detail.style.display === 'none' ? 'block' : 'none';
+      };
+    });
+  } else if (currentTab === 'journal') {
+    renderJournal();
+  } else if (currentTab === 'watch') {
+    renderWatch();
+  } else if (currentTab === 'ask') {
+    renderAsk();
+  }
+}
+
+function renderResult(r, idx) {
+  if (r.type === 'error') return `<div class="error-card">${r.text}</div>`;
+
+  if (r.type === 'scan' || r.type === 'dive') {
+    const isCash = r.text.toUpperCase().includes('NO EDGE') || r.text.toUpperCase().includes('STAY IN CASH');
+    const setups = parseSetups(r.text);
+    const typeLabel = r.type === 'dive' ? `DEEP DIVE: ${r.ticker}` : 'SCAN RESULTS';
+
+    if (isCash && setups.length === 0) {
+      return `<div class="result-header"><span>${typeLabel}</span><span>${r.time}</span></div>
+      <div class="cash-card"><div class="cash-icon">◈</div><div class="cash-title">STAY IN CASH</div><div class="cash-desc">No high-quality setups found. Capital preservation is the correct position.</div></div>`;
+    }
+
+    return `<div class="result-header"><span>${setups.length} SETUP${setups.length!==1?'S':''} — TAP TO EXPAND</span><span>${r.time}</span></div>
+    ${setups.map((s,j) => renderSetupCard(s, idx+'_'+j)).join('')}`;
+  }
+
+  if (r.type === 'market') {
+    const lines = r.text.split('\n').filter(l => l.trim());
+    const verdict = lines.find(l => l.startsWith('VERDICT:'));
+    const vColor = verdict?.includes('RISK-ON') ? '#22c55e' : verdict?.includes('RISK-OFF') ? '#ef4444' : verdict?.includes('MIXED') ? '#fbbf24' : '#3b82f6';
+    return `<div class="result-header"><span>MARKET SNAPSHOT</span><span>${r.time}</span></div>
+    <div class="market-card">${lines.map(l => {
+      const isV = l.startsWith('VERDICT:'), isG = l.startsWith('Gap-up') && !l.includes('none');
+      return `<div class="market-line" style="color:${isV?vColor:isG?'#ef4444':'#64748b'};font-weight:${isV?'700':'400'};font-size:${isV?'13px':'11px'}">${l}</div>`;
+    }).join('')}</div>`;
+  }
+
+  // flow, risk, ask
+  const labels = { flow:'OPTIONS FLOW', risk:'RISK ASSESSMENT', ask:'ANALYSIS' };
+  return `<div class="result-header"><span>${labels[r.type]||'RESULT'}</span><span>${r.time}</span></div>
+  <div class="generic-card"><pre class="generic-pre">${r.text.replace(/\b(STRONG BUY|APPROVED|RISK-ON)\b/g,'<span style="color:#22c55e;font-weight:700;">$1</span>').replace(/\b(AVOID|REJECTED|STAY IN CASH|RISK-OFF)\b/g,'<span style="color:#ef4444;font-weight:700;">$1</span>').replace(/\b(MIXED|WATCHLIST)\b/g,'<span style="color:#fbbf24;font-weight:700;">$1</span>').replace(/(\$[\d,.]+)/g,'<span style="color:#e2e8f0;">$1</span>')}</pre></div>`;
+}
+
+function renderSetupCard(s, id) {
+  const gc = gradeColor(s.grade), dc = dirColor(s.direction), cc2 = callColor(s.call);
+  const isGap = s.gap?.includes('WARNING');
+  return `
+  <div class="setup-card" style="border-left:3px solid ${gc}25;border-color:${gc}25;" id="card-${id}">
+    ${isGap ? `<div style="background:rgba(239,68,68,0.1);padding:6px 14px;font-size:10px;color:#ef4444;font-weight:700;">⚠ GAP WARNING — ${s.gap}</div>` : ''}
+    <div class="setup-header">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div>
+          <div class="setup-title">
+            <span class="setup-ticker">${s.ticker||'—'}</span>
+            <span class="tag" style="background:${dc}15;border:1px solid ${dc}40;color:${dc}">${s.direction==='BULL'?'▲ BULLISH':'▼ BEARISH'}</span>
+            ${s.grade?`<span class="tag" style="background:${gc}15;border:1px solid ${gc}40;color:${gc}">${s.grade}</span>`:''}
+          </div>
+          <div class="setup-edge">${s.edge||'—'}</div>
+          ${s.call?`<div style="margin-top:8px;"><span class="tag" style="background:${cc2}12;border:1px solid ${cc2}35;color:${cc2}">${s.call}</span></div>`:''}
+        </div>
+        <div class="scores">
+          <div class="score-item"><div class="score-val" style="color:${scoreColor(s.ev)}">${s.ev||'—'}</div><div class="score-lbl">EV</div></div>
+          <div class="score-item"><div class="score-val" style="color:${scoreColor(s.prob)}">${s.prob||'—'}</div><div class="score-lbl">PROB</div></div>
+          <div class="score-item"><div class="score-val" style="color:${scoreColor(s.risk)}">${s.risk||'—'}</div><div class="score-lbl">RISK</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="setup-detail" style="display:none;">
+      <div class="price-grid">
+        ${[['ENTRY',`$${s.entry}`,'#3b82f6'],['STOP',`$${s.stop}`,'#ef4444'],['R/R',s.rr,'#fbbf24'],['DTE',s.dte?s.dte+'d':'—','#94a3b8']].map(([l,v,c])=>`<div class="price-box"><div class="price-lbl">${l}</div><div class="price-val" style="color:${c}">${v}</div></div>`).join('')}
+      </div>
+      <div class="tp-grid">
+        ${[['TP1',`$${s.tp1}`],['TP2',`$${s.tp2}`],['TP3',`$${s.tp3}`]].map(([l,v])=>`<div class="tp-box"><div class="price-lbl">${l}</div><div class="price-val" style="color:#22c55e">${v}</div></div>`).join('')}
+      </div>
+      ${s.contract?`<div class="contract-box"><div class="contract-lbl">BEST CONTRACT</div><div class="contract-val">${s.contract}</div><div style="display:flex;gap:12px;margin-top:8px;">${[['Δ',s.delta],['Θ',s.theta],['IV',s.iv?s.iv+'%':null],['OI',s.oi]].map(([l,v])=>v?`<div style="font-size:10px;color:#475569"><span style="color:#334155">${l} </span>${v}</div>`:'').join('')}</div></div>`:''}
+      ${s.danger?`<div class="danger-box"><div class="danger-lbl">⚠ BIGGEST RISK</div><div class="danger-val">${s.danger}</div></div>`:''}
+      <div class="checklist-box">
+        <div class="checklist-lbl">✓ VERIFY IN ROBINHOOD</div>
+        ${[
+          [`Delta ${s.delta||'—'} is 0.35–0.70`, s.delta && +s.delta>=0.35 && +s.delta<=0.70],
+          [`Theta ${s.theta||'—'} is under –0.10`, s.theta && +s.theta>-0.10],
+          [`OI ${s.oi||'—'} is 500+`, s.oi && +s.oi.replace(/,/g,'')>=500],
+          [`DTE ${s.dte||'—'} is 21–75 days`, s.dte && +s.dte>=21 && +s.dte<=75],
+          ['No earnings within 7 days', null],
+          ['Bid/ask spread is tight (under $0.15)', null],
+        ].map(([txt,pass])=>`<div class="check-item"><span style="color:${pass===null?'#334155':pass?'#22c55e':'#ef4444'}">${pass===null?'□':pass?'✓':'✗'}</span><span style="color:${pass===false?'#ef4444':'#475569'}">${txt}</span></div>`).join('')}
+      </div>
+      <div class="btn-row">
+        <button class="action-small" style="color:#3b82f6;border-color:rgba(59,130,246,0.3);background:rgba(59,130,246,0.1);" onclick="runAction('dive','${s.ticker}')">↓ DEEP DIVE</button>
+        <button class="action-small" style="color:${isSaved(s.ticker)?'#22c55e':'#fbbf24'};border-color:${isSaved(s.ticker)?'rgba(34,197,94,0.3)':'rgba(251,191,36,0.3)'};background:${isSaved(s.ticker)?'rgba(34,197,94,0.1)':'rgba(251,191,36,0.1)'};" onclick="saveTrade(${JSON.stringify(s).replace(/"/g,'&quot;')})">${isSaved(s.ticker)?'✓ SAVED':'+ SAVE TRADE'}</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function isSaved(ticker) { return savedTrades.some(t => t.ticker === ticker); }
+
+function saveTrade(s) {
+  if (isSaved(s.ticker)) return;
+  savedTrades.unshift({ ...s, savedAt: new Date().toLocaleDateString() });
+  localStorage.setItem('savedTrades', JSON.stringify(savedTrades));
+  updateJournalBadge();
+  renderContent();
+}
+
+function removeTrade(i) {
+  savedTrades.splice(i, 1);
+  localStorage.setItem('savedTrades', JSON.stringify(savedTrades));
+  updateJournalBadge();
+  renderJournal();
+}
+
+function updateJournalBadge() {
+  const b = document.getElementById('journalBadge');
+  if (savedTrades.length > 0) { b.style.display = 'flex'; b.textContent = savedTrades.length; }
+  else { b.style.display = 'none'; }
+}
+
+async function recheckTrade(trade) {
+  if (loading) return;
+  setLoading('dive');
+  switchTab('scan');
+  const prompt = `Re-evaluate this saved trade for ${trade.ticker} RIGHT NOW. Search current price.
+Original: Entry $${trade.entry}, Stop $${trade.stop}, TP2 $${trade.tp2}, Contract: ${trade.contract}
+Return ONLY:
+==RECHECK:${trade.ticker}==
+CURRENT:$[price] vs entry $${trade.entry}
+TREND:[STILL VALID/WEAKENING/BROKEN]
+CONTRACT_STATUS:[STILL GOOD/REPRICED/EXPIRED]
+GAP_CHECK:[CLEAN/WARNING]
+EARNINGS_CHECK:[SAFE/CAUTION]
+VERDICT:[STILL VALID ENTER/WAIT/EXPIRED REMOVE]
+REASON:[one sentence]
+==END==`;
+  try {
+    const text = await callAPI(prompt, 'dive');
+    results.unshift({ type: 'ask', text, time: new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) });
+    renderContent();
+  } catch(e) {
+    results.unshift({ type: 'error', text: 'Error: ' + e.message, time: '' });
+    renderContent();
+  }
+  clearLoading();
+}
+
+function renderJournal() {
+  const el = document.getElementById('content');
+  if (savedTrades.length === 0) { el.innerHTML = `<div class="empty-state"><div class="empty-icon">📓</div><div class="empty-title">NO SAVED TRADES</div><div class="empty-desc">Save a setup from Scan or Deep Dive.</div></div>`; return; }
+  el.innerHTML = savedTrades.map((t,i) => `
+  <div class="journal-item">
+    <div class="journal-header">
+      <div><span class="journal-ticker">${t.ticker}</span> <span style="font-size:10px;color:#334155;margin-left:8px;">Saved ${t.savedAt}</span></div>
+      <div class="journal-btns">
+        <button class="action-small" style="color:#3b82f6;border-color:rgba(59,130,246,0.3);background:rgba(59,130,246,0.1);padding:5px 10px;" onclick="recheckTrade(${JSON.stringify(t).replace(/"/g,'&quot;')})">RECHECK</button>
+        <button class="action-small" style="color:#ef4444;border-color:rgba(239,68,68,0.3);background:rgba(239,68,68,0.1);padding:5px 10px;" onclick="removeTrade(${i})">REMOVE</button>
+      </div>
+    </div>
+    <div class="journal-grid">
+      ${[['ENTRY',`$${t.entry}`,'#3b82f6'],['STOP',`$${t.stop}`,'#ef4444'],['TP2',`$${t.tp2}`,'#22c55e'],['R/R',t.rr,'#fbbf24']].map(([l,v,c])=>`<div class="journal-box"><div class="price-lbl">${l}</div><div class="price-val" style="color:${c}">${v}</div></div>`).join('')}
+    </div>
+    ${t.contract?`<div class="journal-contract">${t.contract}</div>`:''}
+  </div>`).join('');
+}
+
+function renderWatch() {
+  const el = document.getElementById('content');
+  el.innerHTML = `<div style="font-size:10px;color:#334155;letter-spacing:0.1em;margin-bottom:12px;">YOUR WATCHLIST</div>
+  ${watchlist.map((t,i) => `<div class="watch-item">
+    <span class="watch-ticker">${t}</span>
+    <div class="watch-btns">
+      <button class="action-small" style="color:#3b82f6;border-color:rgba(59,130,246,0.3);background:rgba(59,130,246,0.1);padding:5px 10px;" onclick="runAction('dive','${t}')">DIVE</button>
+      ${!DEFAULT_WATCHLIST.includes(t)?`<button class="action-small" style="color:#ef4444;border-color:rgba(239,68,68,0.3);background:rgba(239,68,68,0.1);padding:5px 10px;" onclick="removeTicker(${i})">✕</button>`:'<div style="width:42px;"></div>'}
+    </div>
+  </div>`).join('')}
+  <div class="add-row">
+    <input class="text-input" id="addTickerInput" placeholder="ADD TICKER..." maxlength="5" oninput="this.value=this.value.toUpperCase()" onkeydown="if(event.key==='Enter')addTicker()" />
+    <button class="action-small" style="color:#22c55e;border-color:rgba(34,197,94,0.3);background:rgba(34,197,94,0.1);" onclick="addTicker()">ADD</button>
+  </div>`;
+}
+
+function addTicker() {
+  const input = document.getElementById('addTickerInput');
+  const t = input.value.trim().toUpperCase();
+  if (t && !watchlist.includes(t)) { watchlist.push(t); localStorage.setItem('watchlist', JSON.stringify(watchlist)); renderWatchlistPills(); renderWatch(); }
+  input.value = '';
+}
+
+function removeTicker(i) {
+  watchlist.splice(i, 1);
+  localStorage.setItem('watchlist', JSON.stringify(watchlist));
+  renderWatchlistPills();
+  renderWatch();
+}
+
+function renderWatch() {
+  const el = document.getElementById('content');
+  el.innerHTML = `<div style="font-size:10px;color:#334155;letter-spacing:0.1em;margin-bottom:12px;">YOUR WATCHLIST</div>
+  ${watchlist.map((t,i) => `<div class="watch-item">
+    <span class="watch-ticker">${t}</span>
+    <div class="watch-btns">
+      <button class="action-small" style="color:#3b82f6;border-color:rgba(59,130,246,0.3);background:rgba(59,130,246,0.1);padding:5px 10px;" onclick="runAction('dive','${t}')">DIVE</button>
+      ${!DEFAULT_WATCHLIST.includes(t)?`<button class="action-small" style="color:#ef4444;border-color:rgba(239,68,68,0.3);background:rgba(239,68,68,0.1);padding:5px 10px;" onclick="removeTicker(${i})">✕</button>`:'<div style="width:42px;"></div>'}
+    </div>
+  </div>`).join('')}
+  <div class="add-row">
+    <input class="text-input" id="addTickerInput" placeholder="ADD TICKER..." maxlength="5" oninput="this.value=this.value.toUpperCase()" onkeydown="if(event.key==='Enter')addTicker()" />
+    <button class="action-small" style="color:#22c55e;border-color:rgba(34,197,94,0.3);background:rgba(34,197,94,0.1);" onclick="addTicker()">ADD</button>
+  </div>`;
+}
+
+function renderAsk() {
+  const el = document.getElementById('content');
+  el.innerHTML = `<div class="ask-section">
+    <div class="ask-title">ASK YOUR ANALYST</div>
+    ${['Is now a good time to buy calls with VIX this low?','What does it mean when a stock gaps up before I enter?','How do I know if I should take profit early?',"What's the safest DTE for a beginner right now?"].map(q=>`<button class="quick-q" onclick="document.getElementById('askInput').value='${q}';sendAsk()">→ ${q}</button>`).join('')}
+  </div>`;
+}
+
+function renderWatchlistPills() {
+  const el = document.getElementById('watchlistPills');
+  el.innerHTML = watchlist.map(t => `<button class="ticker-btn" onclick="runAction('dive','${t}')">${t}</button>`).join('');
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+function initApp() {
+  renderWatchlistPills();
+  updateMarketHours();
+  updateJournalBadge();
+  renderContent();
+  setInterval(updateMarketHours, 60000);
+}
+
+// ─── STARTUP ──────────────────────────────────────────────────────────────────
+window.onload = () => {
+  const key = getKey();
+  if (key) {
+    document.getElementById('keyScreen').style.display = 'none';
+    document.getElementById('mainApp').style.display = 'flex';
+    initApp();
+  }
+};
+</script>
+</body>
+</html>
